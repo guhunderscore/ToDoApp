@@ -50,6 +50,109 @@ class ToDoList extends Component {
     this.onEdit = this.onEdit.bind(this);
     this.onDelete = this.onDelete.bind(this);
     this.onCompleted = this.onCompleted.bind(this);
+
+    this.getList = this.getList.bind(this);
+    this.create = this.create.bind(this);
+    this.update = this.update.bind(this);
+  }
+
+  componentWillMount() {
+    this.getList();
+  }
+
+  getList() {
+    return fetch('http://192.168.0.132:3000/tasks')
+      .then((response) => response.json())
+      .then((responseJson) => {
+        this.setState({
+          items: responseJson.tasks,
+          dataSource: this.state.dataSource.cloneWithRows(responseJson.tasks)
+        });
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  }
+
+  create(params) {
+    let url = 'http://192.168.0.132:3000/tasks/';
+
+    return fetch(url, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          task: params
+        })
+      })
+      .then((response) => response.json())
+      .then((responseJson) => {
+        let newItems = this.state.items.concat(responseJson);
+
+        this.setState({
+          text: '',
+          isEdit: false,
+          items: newItems,
+          dataSource: this.state.dataSource.cloneWithRows(newItems)
+        });
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  }
+
+  update(params) {
+    let url = 'http://192.168.0.132:3000/tasks/' + params.id;
+
+    return fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          task: params
+        })
+      })
+      .then((response) => response.json())
+      .then((responseJson) => {
+        let updateItems = this.state.items.slice();
+        updateItems[this.state.index] = responseJson;
+
+        this.setState({
+          text: '',
+          index: null,
+          items: updateItems,
+          dataSource: this.state.dataSource.cloneWithRows(updateItems)
+        });
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  }
+
+  destroy(id) {
+    let url = 'http://192.168.0.132:3000/tasks/' + id;
+
+    return fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        }
+      })
+      .then((response) => {
+        let items = this.state.items.filter(function(item) {
+          return item.id !== id;
+        });
+
+        this.setState({
+          items: items,
+          dataSource: this.state.dataSource.cloneWithRows(items)
+        });
+      }).catch((error) => { console.error(error); });
   }
 
   onSubmit() {
@@ -58,26 +161,39 @@ class ToDoList extends Component {
     if (text) {
       if (this.state.isEdit) {
         var updateItems = this.state.items.slice();
-        updateItems[this.state.index] = { title: text };
+        let status = this.state.item.aasm_state;
+        let newText = (status  == 'completed' ? (text + ' - Completed') : text);
 
-        this.setState({
-          text: '',
-          isEdit: false,
-          index: null,
-          item: null,
-          items: updateItems,
-          dataSource: this.state.dataSource.cloneWithRows(updateItems)
-        });
+        updateItems[this.state.index] = {
+          id: this.state.item.id,
+          text: newText,
+          aasm_state: status
+        };
+
+        this.update(updateItems[this.state.index]);
+        // updateItems[this.state.index] = { text: text };
+
+        // this.setState({
+        //   text: '',
+        //   isEdit: false,
+        //   index: null,
+        //   items: updateItems,
+        //   dataSource: this.state.dataSource.cloneWithRows(updateItems)
+        // });
       } else {
-        var items = this.state.items;
-        var newItems = items.concat({ title: text });
+        // var item = this.state.items;
+        // var newItems = items.concat({ text: text });
+        // console.log(this.state);
 
-        this.setState({
-          text: '',
-          isEdit: false,
-          items: newItems,
-          dataSource: this.state.dataSource.cloneWithRows(newItems)
-        });
+        let item = { text: text };
+        this.create(item);
+
+        // this.setState({
+        //   text: '',
+        //   isEdit: false,
+        //   items: newItems,
+        //   dataSource: this.state.dataSource.cloneWithRows(newItems)
+        // });
       }
     } else {
       var message = "Title can't be blank";
@@ -90,39 +206,48 @@ class ToDoList extends Component {
 
   onEdit(item, index, isEdit) {
     this.setState({
-      text: item.title,
+      text: item.text.split(' - ')[0],
       isEdit: isEdit,
       index: index,
       item: item
     })
   }
 
-  onDelete(index) {
-    var items = this.state.items;
-    items.splice(index, 1);
+  onDelete(id) {
+    this.destroy(id);
 
-    this.setState({
-      items: items,
-      dataSource: this.state.dataSource.cloneWithRows(items)
-    });
+    // var items = this.state.items;
+    // items.splice(index, 1);
+
+    // this.setState({
+    //   items: items,
+    //   dataSource: this.state.dataSource.cloneWithRows(items)
+    // });
   }
 
   onCompleted(item, index, checked) {
-    var items = this.state.items;
+    // var items = this.state.items;
     var updateItems = this.state.items.slice();
 
     if (checked) {
       // items[index].title = item.title + ' - Completed';
-      updateItems[index] = { title: item.title + ' - Completed' };
+      updateItems[index] = {
+        id: item.id,
+        text: item.text + ' - Completed',
+        aasm_state: 'completed'
+      };
+      this.update(updateItems[index]);
     } else {
       // items[index].title = item.title.split(' - ')[0];
-      updateItems[index] = { title: item.title.split(' - ')[0] };
+      updateItems[index] = {
+        id: item.id,
+        text: item.text.split(' - ')[0],
+        aasm_state: 'uncompleted'
+      };
+      this.update(updateItems[index]);
     }
 
-    this.setState({
-      items: updateItems,
-      dataSource: this.state.dataSource.cloneWithRows(updateItems)
-    });
+    this.setState({ index: index });
   }
 
   render() {
@@ -146,14 +271,16 @@ class ToDoList extends Component {
 class ToDoItem extends Component {
   constructor(props) {
     super(props);
+
+    let item = this.props.item
+    let status = item.aasm_state == 'completed' ? true : false;
+
     this.state = {
       title: '',
-      checked: false
-      // onChange: null,
+      checked: status,
+      item: this.props.item
     };
 
-    // this._toggleChecked = this._toggleChecked.bind(this);
-    // this.onChange = this.onChange.bind(this);
     this.edit = this.edit.bind(this);
     this.delete = this.delete.bind(this);
     this.completed = this.completed.bind(this);
@@ -166,32 +293,30 @@ class ToDoItem extends Component {
   //   this.props.onChange && this.props.onChange(this.props.item.title, checked);
   // }
 
-  // onChange(title, checked) {
-  //   console.log('yuhuu');
-  // }
-
   edit() {
     this.props.onEdit(this.props.item, this.props.rowId, true);
   }
 
   delete() {
-    this.props.onDelete(this.props.rowId);
+    // this.props.onDelete(this.props.rowId);
+    this.props.onDelete(this.props.item.id);
   }
 
   completed() {
-    var checked = !this.state.checked;
+    let checked = !this.state.checked;
+    let item = this.props.item;
 
     this.setState({ checked: checked });
-    this.props.onCompleted(this.props.item, this.props.rowId, checked);
+    this.props.onCompleted(item, this.props.rowId, checked);
   }
 
   render() {
-    var item = this.props.item
+    let item = this.props.item
 
     return (
       <View style={styles.containerItem}>
-        <CheckBox style={styles.checkBox} isChecked={false} onClick={this.completed} />
-        <Text style={{ width: 320 }} onPress={this.edit}>{item.title}</Text>
+        <CheckBox style={styles.checkBox} isChecked={this.state.checked} onClick={this.completed} />
+        <Text style={{ width: 320 }} onPress={this.edit}>{item.text}</Text>
         <Text onPress={this.delete}>x</Text>
       </View>
     );
