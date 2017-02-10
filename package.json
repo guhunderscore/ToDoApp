@@ -13,7 +13,11 @@
     "react-native-check-box": "^1.0.4",
     "react-native-clean-project": "^1.0.4",
     "react-native-device-info": "^0.9.9",
-    "react-native-vector-icons": "^0.8.5"
+    "react-native-vector-icons": "^0.8.5",
+    "react-redux": "^5.0.2",
+    "redux": "^3.6.0",
+    "redux-actions": "^1.2.1",
+    "redux-thunk": "^2.2.0"
   },
   "devDependencies": {
     "babel-jest": "18.0.0",

@@ -1,10 +1,9 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- * @flow
- */
+import React, { AppRegistry } from 'react-native';
+import App from './app/containers/app';
 
-import React, { Component } from 'react';
+AppRegistry.registerComponent('ToDoApp', () => App);
+
+/*import React, { Component } from 'react';
 import CheckBox from 'react-native-check-box';
 import {
   AppRegistry,
@@ -367,5 +366,5 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
 });
-
 AppRegistry.registerComponent('ToDoApp', () => ToDoApp);
+*/
