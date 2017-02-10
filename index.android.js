@@ -54,9 +54,10 @@ class ToDoList extends Component {
     this.getList = this.getList.bind(this);
     this.create = this.create.bind(this);
     this.update = this.update.bind(this);
+    this.destroy = this.destroy.bind(this);
   }
 
-  componentWillMount() {
+  componentWillMount(nextProps, nextState) {
     this.getList();
   }
 
@@ -135,6 +136,8 @@ class ToDoList extends Component {
 
   destroy(id) {
     let url = 'http://192.168.0.132:3000/tasks/' + id;
+    // let items = this.state.items
+    // items.splice(this.state.index, 1);
 
     return fetch(url, {
         method: 'DELETE',
@@ -144,9 +147,12 @@ class ToDoList extends Component {
         }
       })
       .then((response) => {
-        let items = this.state.items.filter(function(item) {
-          return item.id !== id;
-        });
+        // let items = this.state.items.filter(function(obj) {
+        //   return obj.id !== id;
+        // })
+        let items = this.state.items
+        delete items[this.state.index];
+        console.log(items)
 
         this.setState({
           items: items,
@@ -213,8 +219,9 @@ class ToDoList extends Component {
     })
   }
 
-  onDelete(id) {
-    this.destroy(id);
+  onDelete(id, index) {
+    // console.log(index)
+    this.setState({ index: index }, function() { this.destroy(id); });
 
     // var items = this.state.items;
     // items.splice(index, 1);
@@ -236,7 +243,9 @@ class ToDoList extends Component {
         text: item.text + ' - Completed',
         aasm_state: 'completed'
       };
-      this.update(updateItems[index]);
+      this.setState({ index: index }, function() {
+        this.update(updateItems[index]);
+      });
     } else {
       // items[index].title = item.title.split(' - ')[0];
       updateItems[index] = {
@@ -244,10 +253,19 @@ class ToDoList extends Component {
         text: item.text.split(' - ')[0],
         aasm_state: 'uncompleted'
       };
-      this.update(updateItems[index]);
+      this.setState({ index: index }, function() {
+        this.update(updateItems[index]);
+      });
     }
 
-    this.setState({ index: index });
+  }
+
+  renderRow(item, sectionId, rowId) {
+    return (
+      <ToDoItem item={item}
+        sectionId={sectionId} rowId={rowId} onEdit={this.onEdit}
+        onDelete={this.onDelete} onCompleted={this.onCompleted}/>
+    );
   }
 
   render() {
@@ -258,9 +276,10 @@ class ToDoList extends Component {
 
         <Button onPress={this.onSubmit} title='Save' color="#1e90ff" />
         <ListView
-          dataSource={this.state.dataSource} renderRow={(item, sectionId, rowId) => <ToDoItem item={item}
-          sectionId={sectionId} rowId={rowId} onEdit={this.onEdit}
-          onDelete={this.onDelete} onCompleted={this.onCompleted}/>}
+          dataSource={this.state.dataSource}
+          renderRow={(item, sectionId, rowId) =>  <ToDoItem item={item}
+            sectionId={sectionId} rowId={rowId} onEdit={this.onEdit}
+            onDelete={this.onDelete} onCompleted={this.onCompleted}/>}
           enableEmptySections={true}
         />
       </View>
@@ -299,23 +318,25 @@ class ToDoItem extends Component {
 
   delete() {
     // this.props.onDelete(this.props.rowId);
-    this.props.onDelete(this.props.item.id);
+    this.props.onDelete(this.props.item.id, this.props.rowId);
   }
 
   completed() {
     let checked = !this.state.checked;
     let item = this.props.item;
 
-    this.setState({ checked: checked });
-    this.props.onCompleted(item, this.props.rowId, checked);
+    this.setState({ checked: checked }, function() {
+      this.props.onCompleted(item, this.props.rowId, checked);
+    });
   }
 
   render() {
     let item = this.props.item
-
+    let status = item.aasm_state == 'completed' ? true : false
+    console.log(status)
     return (
       <View style={styles.containerItem}>
-        <CheckBox style={styles.checkBox} isChecked={this.state.checked} onClick={this.completed} />
+        <CheckBox style={styles.checkBox} isChecked={status} onClick={this.completed} />
         <Text style={{ width: 320 }} onPress={this.edit}>{item.text}</Text>
         <Text onPress={this.delete}>x</Text>
       </View>
